@@ -6,8 +6,11 @@ import androidx.core.app.ActivityCompat;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.location.Address;
+import android.location.Geocoder;
 import android.location.Location;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -18,7 +21,11 @@ import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnSuccessListener;
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener {
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+public class MainActivity extends AppCompatActivity implements View.OnClickListener,OnTaskCompleted {
 
     private static final int REQUEST_LOCATION_PERMISSION =1 ;
     Button LastLocation;
@@ -46,9 +53,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void getLocation() {
-        if (ActivityCompat.checkSelfPermission(this,
-                Manifest.permission.ACCESS_FINE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED) {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]
                             {Manifest.permission.ACCESS_FINE_LOCATION},
                     REQUEST_LOCATION_PERMISSION);
@@ -58,18 +63,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             fusedLocationProviderClient.getLastLocation().addOnSuccessListener(new OnSuccessListener<Location>() {
                 @Override
                 public void onSuccess(Location location) {
-                    if (location!=null)
-                    {
-                        mLastLocation = location;
-                        mLocationTextView.setText(
-                                getString(R.string.location_text,
-                                        mLastLocation.getLatitude(),
-                                        mLastLocation.getLongitude(),
-                                        mLastLocation.getTime()));
-                    }else
-                    {
-                        mLocationTextView.setText("Location Not available Turn on/off gps or open GoogleMaps");
-                    }
+                    new FetchAddressAsyncTask(MainActivity.this,
+                            MainActivity.this).execute(location);
+
                 }
             });
         }
@@ -87,5 +83,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 }
                 break;
         }
+    }
+
+    @Override
+    public void onTaskCompleted(String result) {
+        mLocationTextView.setText(getString(R.string.address_text,
+                result, System.currentTimeMillis()));
     }
 }
