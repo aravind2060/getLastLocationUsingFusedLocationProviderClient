@@ -19,7 +19,15 @@ import android.widget.Toast;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.libraries.places.api.Places;
+import com.google.android.libraries.places.api.net.PlacesClient;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -32,7 +40,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     TextView mLocationTextView;
     Location mLastLocation;
     FusedLocationProviderClient fusedLocationProviderClient;
-
+    GoogleMap googleMap;
+    SupportMapFragment supportMapFragment;
+    Location location;
+    PlacesClient placesClient;
+    boolean flag=false;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -40,7 +52,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         mLocationTextView=findViewById(R.id.textView);
         LastLocation=findViewById(R.id.button);
+        if (!Places.isInitialized())
+        {
+            Places.initialize(getApplicationContext(),"AIzaSyCYdY6IAHRD1QkxisenY2ik_dN1i0EAops");
+        }
+        placesClient=Places.createClient(this);
 
+         supportMapFragment= (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.fragment);
 
         fusedLocationProviderClient= LocationServices.getFusedLocationProviderClient(getApplicationContext());
 
@@ -59,13 +77,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     REQUEST_LOCATION_PERMISSION);
         } else {
             Toast.makeText(getApplicationContext(),"Permission Granted!! ",Toast.LENGTH_LONG).show();
-
+            flag=true;
             fusedLocationProviderClient.getLastLocation().addOnSuccessListener(new OnSuccessListener<Location>() {
                 @Override
-                public void onSuccess(Location location) {
-                    new FetchAddressAsyncTask(MainActivity.this,
-                            MainActivity.this).execute(location);
+                public void onSuccess(Location locationa) {
+                    if (locationa != null) {
+                        location = locationa;
 
+                        new FetchAddressAsyncTask(MainActivity.this,
+                                MainActivity.this).execute(locationa);
+                        initMap();
+                    }
                 }
             });
         }
@@ -78,6 +100,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             case REQUEST_LOCATION_PERMISSION:
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     getLocation();
+                    flag=true;
+
                 } else {
                     Toast.makeText(this, "Permission denied",Toast.LENGTH_SHORT).show();
                 }
@@ -89,5 +113,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void onTaskCompleted(String result) {
         mLocationTextView.setText(getString(R.string.address_text,
                 result, System.currentTimeMillis()));
+    }
+
+    public void initMap()
+    {
+          supportMapFragment.getMapAsync(new OnMapReadyCallback() {
+              @Override
+              public void onMapReady(GoogleMap googleMaps) {
+                  googleMap = googleMaps;
+                  if (flag) {
+                      LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
+                      googleMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
+                      googleMap.setMyLocationEnabled(true);
+                      googleMap.addMarker(new MarkerOptions().title("Your here").position(latLng));
+                  }
+              }
+          });
     }
 }
